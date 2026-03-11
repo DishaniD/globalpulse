@@ -17,11 +17,12 @@ const CATEGORY_INFO: Record<Category, { title: string; description: string; emoj
 export const revalidate = 1800
 
 interface PageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export default async function CategoryPage({ params }: PageProps) {
-  const category = params.slug as Category
+  const { slug } = await params
+  const category = slug as Category
 
   if (!VALID_CATEGORIES.includes(category)) notFound()
 
@@ -31,7 +32,6 @@ export default async function CategoryPage({ params }: PageProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
       <div className="mb-10 border-b-2 border-ink pb-6">
         <div className="flex items-center gap-3 mb-2">
           <span className="text-4xl">{info.emoji}</span>
