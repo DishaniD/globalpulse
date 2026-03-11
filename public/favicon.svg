@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Circular background gradient -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#E8314A"/>
+      <stop offset="100%" stop-color="#8B0B20"/>
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="32" r="32" fill="url(#bg)"/>
+  <!-- G letter -->
+  <text x="32" y="44" font-family="Georgia, serif" font-size="34" font-weight="bold" fill="white" text-anchor="middle">G</text>
+</svg>

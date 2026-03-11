@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cream: #FAF8F2;
+  --ink: #0D0D0D;
+  --pulse: #C8102E;
+  --gold: #D4A017;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background-color: var(--cream);
+  color: var(--ink);
+}
+
+@layer components {
+  .section-divider {
+    @apply border-t-2 border-ink/10 my-8;
+  }
+  .category-badge {
+    @apply inline-block text-xs font-mono uppercase tracking-widest px-2 py-1 bg-pulse text-white;
+  }
+  .headline-link {
+    @apply font-display font-bold leading-tight hover:text-pulse transition-colors duration-200;
+  }
+  .article-card {
+    @apply border border-ink/10 bg-white hover:shadow-lg transition-all duration-300;
+  }
+}
+
+/* News ticker */
+.ticker-wrap {
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ticker-content {
+  display: inline-block;
+  animation: ticker 40s linear infinite;
+}
+.ticker-content:hover {
+  animation-play-state: paused;
+}
+
+/* Grid layouts */
+.news-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .news-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .news-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .hero-grid { grid-template-columns: 2fr 1fr; }
+}
+
+/* Animations */
+@keyframes ticker {
+  0% { transform: translateX(100vw); }
+  100% { transform: translateX(-100%); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* Staggered children */
+.stagger > *:nth-child(1) { opacity: 0; animation: fadeIn 0.5s ease-out 0.05s forwards; }
+.stagger > *:nth-child(2) { opacity: 0; animation: fadeIn 0.5s ease-out 0.1s forwards; }
+.stagger > *:nth-child(3) { opacity: 0; animation: fadeIn 0.5s ease-out 0.15s forwards; }
+.stagger > *:nth-child(4) { opacity: 0; animation: fadeIn 0.5s ease-out 0.2s forwards; }
+.stagger > *:nth-child(5) { opacity: 0; animation: fadeIn 0.5s ease-out 0.25s forwards; }
+.stagger > *:nth-child(6) { opacity: 0; animation: fadeIn 0.5s ease-out 0.3s forwards; }
