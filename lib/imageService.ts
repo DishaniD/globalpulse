@@ -11,5 +11,7 @@ export async function generateNewsImage(prompt: string): Promise<string> {
     quality: 'standard',
   })
 
-  return response.data[0]?.url || ''
+  const url = response.data?.[0]?.url
+  if (!url) throw new Error('No image URL returned from DALL-E')
+  return url
 }
