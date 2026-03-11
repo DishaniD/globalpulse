@@ -27,11 +27,12 @@ export default async function CategoryPage({ params }: PageProps) {
   if (!VALID_CATEGORIES.includes(category)) notFound()
 
   const info = CATEGORY_INFO[category]
-  const rawArticles = await fetchNewsByCategory(category, 12)
+  const rawArticles = await fetchNewsByCategory(category, 18)
   const articles = rawArticles.map(a => mapApiArticle(a, category))
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
       <div className="mb-10 border-b-2 border-ink pb-6">
         <div className="flex items-center gap-3 mb-2">
           <span className="text-4xl">{info.emoji}</span>
