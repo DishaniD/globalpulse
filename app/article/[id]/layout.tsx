@@ -1,8 +1,7 @@
 'use client'
 import { Suspense } from 'react'
-import ArticlePage from './page'
 
-export default function ArticlePageWrapper() {
+export default function ArticleLayout({ children }: { children: React.ReactNode }) {
   return (
     <Suspense fallback={
       <div className="max-w-4xl mx-auto px-4 py-10">
@@ -18,7 +17,7 @@ export default function ArticlePageWrapper() {
         </div>
       </div>
     }>
-      <ArticlePage />
+      {children}
     </Suspense>
   )
 }
