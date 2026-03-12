@@ -16,7 +16,7 @@ export interface Article {
   keywords?: string[]
 }
 
-export type Category = 'world' | 'technology' | 'sports' | 'business' | 'positive' | 'general'
+export type Category = 'world' | 'technology' | 'sports' | 'business' | 'positive' | 'conflicts' | 'general'
 
 export interface NewsApiResponse {
   meta: { found: number; returned: number; limit: number; page: number }
@@ -37,4 +37,15 @@ export interface NewsApiArticle {
   categories: string[]
   relevance_score: number | null
   locale: string
+}
+
+export interface RssArticle {
+  id: string
+  title: string
+  description: string
+  url: string
+  image_url: string
+  published_at: string
+  source: string
+  category: 'conflicts'
 }

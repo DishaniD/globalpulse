@@ -4,11 +4,12 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 const CATEGORIES = [
-  { label: 'World', href: '/category/world' },
-  { label: 'Technology', href: '/category/technology' },
-  { label: 'Sports', href: '/category/sports' },
-  { label: 'Business', href: '/category/business' },
-  { label: '✨ Positive', href: '/category/positive' },
+  { label: 'World',              href: '/category/world' },
+  { label: 'Technology',         href: '/category/technology' },
+  { label: 'Sports',             href: '/category/sports' },
+  { label: 'Business',           href: '/category/business' },
+  { label: '✨ Positive',        href: '/category/positive' },
+  { label: '💥 Conflicts',       href: '/category/conflicts', highlight: true },
 ]
 
 export default function Navbar() {
@@ -28,7 +29,7 @@ export default function Navbar() {
     <header className="bg-ink text-cream sticky top-0 z-50 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* Top row: Logo + Nav + Saved */}
+        {/* Top row: Logo + Nav */}
         <div className="flex items-center justify-between h-14">
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <span className="text-pulse font-mono font-bold text-lg">●</span>
@@ -39,7 +40,11 @@ export default function Navbar() {
           <nav className="hidden md:flex items-center gap-5">
             {CATEGORIES.map(cat => (
               <Link key={cat.href} href={cat.href}
-                className="font-mono text-xs uppercase tracking-widest text-cream/70 hover:text-gold transition-colors duration-200">
+                className={`font-mono text-xs uppercase tracking-widest transition-colors duration-200 ${
+                  cat.highlight
+                    ? 'text-pulse hover:text-red-400 font-bold'
+                    : 'text-cream/70 hover:text-gold'
+                }`}>
                 {cat.label}
               </Link>
             ))}
@@ -77,7 +82,9 @@ export default function Navbar() {
           <div className="md:hidden py-2 border-t border-cream/10">
             {CATEGORIES.map(cat => (
               <Link key={cat.href} href={cat.href}
-                className="block py-3 font-mono text-sm uppercase tracking-widest text-cream/70 hover:text-gold border-b border-cream/5"
+                className={`block py-3 font-mono text-sm uppercase tracking-widest border-b border-cream/5 transition-colors ${
+                  cat.highlight ? 'text-pulse font-bold' : 'text-cream/70 hover:text-gold'
+                }`}
                 onClick={() => setMenuOpen(false)}>
                 {cat.label}
               </Link>

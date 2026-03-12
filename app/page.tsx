@@ -1,18 +1,16 @@
 import { getArticlesByCategory, getTopHeadlines } from '@/lib/db'
 import { fetchTopHeadlines, fetchNewsByCategory, mapApiArticle } from '@/lib/newsApi'
+import { fetchConflictNews } from '@/lib/rssService'
 import { saveArticles } from '@/lib/db'
 import HeroSection from '@/components/HeroSection'
 import CategorySection from '@/components/CategorySection'
 import PositiveSection from '@/components/PositiveSection'
 import { Category } from '@/types'
 
-export const revalidate = 1800
+export const revalidate = 900
 
 async function getOrFetch(category: Category, limit: number) {
-  // Try DB first
   let articles = await getArticlesByCategory(category, limit)
-
-  // If not enough, fetch from API and save
   if (articles.length < 3) {
     try {
       const fresh = await fetchNewsByCategory(category, limit * 2)
@@ -25,12 +23,28 @@ async function getOrFetch(category: Category, limit: number) {
       console.error(`Failed to fetch ${category}:`, e)
     }
   }
+  return articles.slice(0, limit)
+}
 
+async function getOrFetchConflicts(limit: number) {
+  let articles = await getArticlesByCategory('conflicts', limit)
+  if (articles.length < 3) {
+    try {
+      const fresh = await fetchConflictNews(limit * 2)
+      if (fresh.length > 0) {
+        await saveArticles(fresh)
+        articles = fresh.slice(0, limit)
+      }
+    } catch (e) {
+      console.error('Failed to fetch conflicts:', e)
+    }
+  }
+  // Always sort by newest
+  articles.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
   return articles.slice(0, limit)
 }
 
 export default async function HomePage() {
-  // Get top headlines from DB
   let top = await getTopHeadlines(6)
   if (top.length < 3) {
     try {
@@ -45,11 +59,12 @@ export default async function HomePage() {
     }
   }
 
-  const [tech, sports, business, positive] = await Promise.all([
+  const [tech, sports, business, positive, conflicts] = await Promise.all([
     getOrFetch('technology', 6),
     getOrFetch('sports', 6),
     getOrFetch('business', 6),
     getOrFetch('positive', 6),
+    getOrFetchConflicts(6),
   ])
 
   return (
@@ -59,6 +74,16 @@ export default async function HomePage() {
       <div className="section-divider" />
 
       <div className="space-y-12">
+        {/* Breaking Conflicts — shown first, red accent */}
+        {conflicts.length > 0 && (
+          <CategorySection
+            title="Breaking Conflicts"
+            category="conflicts"
+            articles={conflicts}
+            emoji="💥"
+            accent="red"
+          />
+        )}
         {tech.length > 0 && (
           <CategorySection title="Technology" category="technology" articles={tech} emoji="💻" />
         )}
