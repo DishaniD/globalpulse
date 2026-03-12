@@ -8,12 +8,13 @@ interface ArticleCardProps {
   article: Article
 }
 
-export default function ArticleCard({ article }: ArticleCardProps) {
-  const articleUrl = `/article/${article.id}?url=${encodeURIComponent(article.url)}&title=${encodeURIComponent(article.title)}&desc=${encodeURIComponent(article.description || '')}&img=${encodeURIComponent(article.image_url || '')}&source=${encodeURIComponent(article.source)}&cat=${encodeURIComponent(article.category)}&date=${encodeURIComponent(article.published_at)}`
+export function buildArticleUrl(article: Article) {
+  return `/article/${article.id}?id=${article.id}&url=${encodeURIComponent(article.url)}&title=${encodeURIComponent(article.title)}&desc=${encodeURIComponent(article.description || '')}&img=${encodeURIComponent(article.image_url || '')}&source=${encodeURIComponent(article.source)}&cat=${encodeURIComponent(article.category)}&date=${encodeURIComponent(article.published_at)}`
+}
 
+export default function ArticleCard({ article }: ArticleCardProps) {
   return (
-    <Link href={articleUrl} className="group article-card block overflow-hidden">
-      {/* Image */}
+    <Link href={buildArticleUrl(article)} className="group article-card block overflow-hidden">
       <div className="relative h-48 overflow-hidden">
         <NewsImage
           src={article.image_url}
@@ -26,7 +27,6 @@ export default function ArticleCard({ article }: ArticleCardProps) {
         </div>
       </div>
 
-      {/* Content */}
       <div className="p-4">
         <h3 className="headline-link font-display text-lg leading-tight mb-2 line-clamp-2">
           {article.title}

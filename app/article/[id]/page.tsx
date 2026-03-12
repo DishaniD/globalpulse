@@ -10,6 +10,7 @@ interface AIContent {
   summary: string
   imagePrompt: string
   aiImageUrl?: string
+  fromCache?: boolean
 }
 
 type Status = 'loading' | 'done' | 'error'
@@ -24,10 +25,30 @@ export default function ArticlePage() {
   const source = params.get('source') || ''
   const cat = params.get('cat') || 'general'
   const date = params.get('date') || ''
+  const articleId = params.get('id') || ''
 
   const [status, setStatus] = useState<Status>('loading')
   const [aiContent, setAiContent] = useState<AIContent | null>(null)
   const [aiImgLoading, setAiImgLoading] = useState(false)
+  const [bookmarked, setBookmarked] = useState(false)
+  const [session] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    let s = localStorage.getItem('gp_session')
+    if (!s) {
+      s = Math.random().toString(36).slice(2)
+      localStorage.setItem('gp_session', s)
+    }
+    return s
+  })
+
+  // Check bookmark status
+  useEffect(() => {
+    if (!articleId || !session) return
+    fetch(`/api/bookmarks?session=${session}&articleId=${articleId}`)
+      .then(r => r.json())
+      .then(d => setBookmarked(d.bookmarked))
+      .catch(() => {})
+  }, [articleId, session])
 
   useEffect(() => {
     if (!title) return
@@ -39,18 +60,17 @@ export default function ArticlePage() {
         const rewriteRes = await fetch('/api/rewrite', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, content: desc || title, category: cat }),
+          body: JSON.stringify({ title, content: desc || title, category: cat, articleId }),
         })
 
-        if (!rewriteRes.ok) {
-          const errData = await rewriteRes.json().catch(() => ({}))
-          console.error('Rewrite API error:', errData)
-          throw new Error(errData.detail || 'Rewrite failed')
-        }
+        if (!rewriteRes.ok) throw new Error('Rewrite failed')
 
-        const { rewritten, summary, imagePrompt } = await rewriteRes.json()
-        setAiContent({ rewritten, summary, imagePrompt })
+        const { rewritten, summary, imagePrompt, aiImageUrl, fromCache } = await rewriteRes.json()
+        setAiContent({ rewritten, summary, imagePrompt, aiImageUrl, fromCache })
         setStatus('done')
+
+        // If we already have a cached AI image, skip generation
+        if (aiImageUrl) return
 
         // Generate AI image in background
         if (imagePrompt) {
@@ -59,7 +79,7 @@ export default function ArticlePage() {
             const imgRes = await fetch('/api/generate-image', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ prompt: imagePrompt }),
+              body: JSON.stringify({ prompt: imagePrompt, articleId }),
             })
             if (imgRes.ok) {
               const { imageUrl } = await imgRes.json()
@@ -78,9 +98,19 @@ export default function ArticlePage() {
     }
 
     processArticle()
-  }, [title, desc, cat])
+  }, [title, desc, cat, articleId])
 
-  // Use AI image if available, otherwise original
+  async function toggleBookmark() {
+    if (!articleId || !session) return
+    const method = bookmarked ? 'DELETE' : 'POST'
+    await fetch('/api/bookmarks', {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ articleId, session }),
+    })
+    setBookmarked(!bookmarked)
+  }
+
   const displayImage = aiContent?.aiImageUrl || img
 
   return (
@@ -100,6 +130,17 @@ export default function ArticlePage() {
             · {formatDistanceToNow(new Date(date), { addSuffix: true })}
           </span>
         )}
+        {/* Bookmark button */}
+        <button
+          onClick={toggleBookmark}
+          className="ml-auto flex items-center gap-1 font-mono text-xs px-3 py-1 border transition-colors duration-200"
+          style={{
+            borderColor: bookmarked ? '#C8102E' : '#ccc',
+            color: bookmarked ? '#C8102E' : '#888',
+          }}
+        >
+          {bookmarked ? '★ Saved' : '☆ Save'}
+        </button>
       </div>
 
       {/* Title */}
