@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import NewsImage from '@/components/NewsImage'
+import ShareButtons from '@/components/ShareButtons'
 
 interface AIContent {
   rewritten: string
@@ -31,6 +32,7 @@ export default function ArticlePage() {
   const [aiContent, setAiContent] = useState<AIContent | null>(null)
   const [aiImgLoading, setAiImgLoading] = useState(false)
   const [bookmarked, setBookmarked] = useState(false)
+  const [shareUrl, setShareUrl] = useState('')
   const [session] = useState(() => {
     if (typeof window === 'undefined') return ''
     let s = localStorage.getItem('gp_session')
@@ -41,7 +43,10 @@ export default function ArticlePage() {
     return s
   })
 
-  // Check bookmark status
+  useEffect(() => {
+    setShareUrl(window.location.href)
+  }, [])
+
   useEffect(() => {
     if (!articleId || !session) return
     fetch(`/api/bookmarks?session=${session}&articleId=${articleId}`)
@@ -56,23 +61,18 @@ export default function ArticlePage() {
     async function processArticle() {
       try {
         setStatus('loading')
-
         const rewriteRes = await fetch('/api/rewrite', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title, content: desc || title, category: cat, articleId }),
         })
-
         if (!rewriteRes.ok) throw new Error('Rewrite failed')
-
         const { rewritten, summary, imagePrompt, aiImageUrl, fromCache } = await rewriteRes.json()
         setAiContent({ rewritten, summary, imagePrompt, aiImageUrl, fromCache })
         setStatus('done')
 
-        // If we already have a cached AI image, skip generation
         if (aiImageUrl) return
 
-        // Generate AI image in background
         if (imagePrompt) {
           setAiImgLoading(true)
           try {
@@ -116,12 +116,11 @@ export default function ArticlePage() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
 
-      {/* Back nav */}
       <Link href="/" className="inline-flex items-center gap-2 font-mono text-sm text-ink/40 hover:text-pulse transition-colors mb-6">
         ← Back
       </Link>
 
-      {/* Category + Source + Date */}
+      {/* Category + Source + Date + Bookmark */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <span className="category-badge">{cat}</span>
         <span className="font-mono text-xs text-ink/50 uppercase tracking-wider">{source}</span>
@@ -130,15 +129,9 @@ export default function ArticlePage() {
             · {formatDistanceToNow(new Date(date), { addSuffix: true })}
           </span>
         )}
-        {/* Bookmark button */}
-        <button
-          onClick={toggleBookmark}
+        <button onClick={toggleBookmark}
           className="ml-auto flex items-center gap-1 font-mono text-xs px-3 py-1 border transition-colors duration-200"
-          style={{
-            borderColor: bookmarked ? '#C8102E' : '#ccc',
-            color: bookmarked ? '#C8102E' : '#888',
-          }}
-        >
+          style={{ borderColor: bookmarked ? '#C8102E' : '#ccc', color: bookmarked ? '#C8102E' : '#888' }}>
           {bookmarked ? '★ Saved' : '☆ Save'}
         </button>
       </div>
@@ -147,6 +140,11 @@ export default function ArticlePage() {
       <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold leading-tight mb-6">
         {title}
       </h1>
+
+      {/* Share Buttons */}
+      <div className="mb-6 pb-6 border-b border-ink/10">
+        <ShareButtons title={title} url={shareUrl || url} />
+      </div>
 
       {/* Summary Box */}
       <div className="bg-ink text-cream p-5 mb-8 border-l-4 border-pulse">
@@ -173,12 +171,8 @@ export default function ArticlePage() {
             <p className="font-mono text-xs text-ink/40">Loading image...</p>
           </div>
         ) : (
-          <NewsImage
-            src={displayImage}
-            alt={title}
-            category={cat}
-            className="w-full max-h-[420px] min-h-[260px]"
-          />
+          <NewsImage src={displayImage} alt={title} category={cat}
+            className="w-full max-h-[420px] min-h-[260px]" />
         )}
       </div>
 
@@ -203,20 +197,19 @@ export default function ArticlePage() {
         )}
       </article>
 
-      {/* Read Original */}
-      <div className="mt-10 pt-6 border-t border-ink/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <p className="font-mono text-xs text-ink/40 uppercase tracking-widest mb-1">Source</p>
-          <p className="font-body text-ink/60 text-sm">{source}</p>
+      {/* Bottom Share + Read Original */}
+      <div className="mt-10 pt-6 border-t border-ink/10 space-y-6">
+        <ShareButtons title={title} url={shareUrl || url} />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <p className="font-mono text-xs text-ink/40 uppercase tracking-widest mb-1">Source</p>
+            <p className="font-body text-ink/60 text-sm">{source}</p>
+          </div>
+          <a href={url} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-ink text-cream font-mono text-sm px-5 py-3 hover:bg-pulse transition-colors duration-200 w-full sm:w-auto justify-center">
+            Read Original →
+          </a>
         </div>
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 bg-ink text-cream font-mono text-sm px-5 py-3 hover:bg-pulse transition-colors duration-200 w-full sm:w-auto justify-center"
-        >
-          Read Original →
-        </a>
       </div>
 
     </div>

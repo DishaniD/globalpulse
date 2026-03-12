@@ -1,24 +1,56 @@
+import { getArticlesByCategory, getTopHeadlines } from '@/lib/db'
 import { fetchTopHeadlines, fetchNewsByCategory, mapApiArticle } from '@/lib/newsApi'
+import { saveArticles } from '@/lib/db'
 import HeroSection from '@/components/HeroSection'
 import CategorySection from '@/components/CategorySection'
 import PositiveSection from '@/components/PositiveSection'
+import { Category } from '@/types'
 
 export const revalidate = 1800
 
-export default async function HomePage() {
-  const [topArticles, techArticles, sportsArticles, businessArticles, positiveArticles] = await Promise.allSettled([
-    fetchTopHeadlines(6).then(articles => articles.map(a => mapApiArticle(a, 'world'))),
-    fetchNewsByCategory('technology', 6).then(articles => articles.map(a => mapApiArticle(a, 'technology'))),
-    fetchNewsByCategory('sports', 6).then(articles => articles.map(a => mapApiArticle(a, 'sports'))),
-    fetchNewsByCategory('business', 6).then(articles => articles.map(a => mapApiArticle(a, 'business'))),
-    fetchNewsByCategory('positive', 6).then(articles => articles.map(a => mapApiArticle(a, 'positive'))),
-  ])
+async function getOrFetch(category: Category, limit: number) {
+  // Try DB first
+  let articles = await getArticlesByCategory(category, limit)
 
-  const top = topArticles.status === 'fulfilled' ? topArticles.value : []
-  const tech = techArticles.status === 'fulfilled' ? techArticles.value : []
-  const sports = sportsArticles.status === 'fulfilled' ? sportsArticles.value : []
-  const business = businessArticles.status === 'fulfilled' ? businessArticles.value : []
-  const positive = positiveArticles.status === 'fulfilled' ? positiveArticles.value : []
+  // If not enough, fetch from API and save
+  if (articles.length < 3) {
+    try {
+      const fresh = await fetchNewsByCategory(category, limit * 2)
+      const mapped = fresh.map(a => mapApiArticle(a, category))
+      if (mapped.length > 0) {
+        await saveArticles(mapped)
+        articles = mapped.slice(0, limit)
+      }
+    } catch (e) {
+      console.error(`Failed to fetch ${category}:`, e)
+    }
+  }
+
+  return articles.slice(0, limit)
+}
+
+export default async function HomePage() {
+  // Get top headlines from DB
+  let top = await getTopHeadlines(6)
+  if (top.length < 3) {
+    try {
+      const fresh = await fetchTopHeadlines(12)
+      const mapped = fresh.map(a => mapApiArticle(a, 'world'))
+      if (mapped.length > 0) {
+        await saveArticles(mapped)
+        top = mapped.slice(0, 6)
+      }
+    } catch (e) {
+      console.error('Failed to fetch headlines:', e)
+    }
+  }
+
+  const [tech, sports, business, positive] = await Promise.all([
+    getOrFetch('technology', 6),
+    getOrFetch('sports', 6),
+    getOrFetch('business', 6),
+    getOrFetch('positive', 6),
+  ])
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
