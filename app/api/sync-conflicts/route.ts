@@ -14,9 +14,13 @@ export async function GET() {
 
     await saveArticles(articles)
 
+    const withImages = articles.filter(a => a.image_url).length
+
     return NextResponse.json({
       success: true,
       saved: articles.length,
+      with_images: withImages,
+      without_images: articles.length - withImages,
       sources: {
         Reuters: articles.filter(a => a.source === 'Reuters').length,
         'Al Jazeera': articles.filter(a => a.source === 'Al Jazeera').length,
@@ -24,8 +28,9 @@ export async function GET() {
         'The Guardian': articles.filter(a => a.source === 'The Guardian').length,
       }
     })
-  } catch (error: any) {
-    console.error('RSS sync error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    console.error('RSS sync error:', message)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

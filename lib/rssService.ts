@@ -50,16 +50,60 @@ function decodeHtmlEntities(str: string): string {
 }
 
 // ── CLEAN DESCRIPTION ─────────────────────────────────────────────────────────
-// Handles both raw HTML and HTML-encoded content (e.g. Guardian RSS)
 function cleanDescription(raw: string): string {
-  // First decode HTML entities (turns &lt;p&gt; into <p>)
   let text = decodeHtmlEntities(raw)
-  // Then strip all HTML tags
   text = text.replace(/<[^>]+>/g, ' ')
-  // Collapse whitespace
   text = text.replace(/\s+/g, ' ').trim()
-  // Truncate
   return text.slice(0, 500)
+}
+
+// ── FETCH OG IMAGE FROM ARTICLE PAGE ─────────────────────────────────────────
+async function fetchOgImage(url: string): Promise<string> {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; GlobalPulse/1.0)',
+        'Accept': 'text/html',
+      },
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+
+    if (!res.ok) return ''
+
+    // Only read first 10KB — og:image is always in <head>
+    const reader = res.body?.getReader()
+    if (!reader) return ''
+
+    let html = ''
+    let bytesRead = 0
+    while (bytesRead < 10000) {
+      const { done, value } = await reader.read()
+      if (done) break
+      html += new TextDecoder().decode(value)
+      bytesRead += value?.length || 0
+    }
+    reader.cancel()
+
+    // Extract og:image
+    const ogMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i)
+      || html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i)
+
+    const imgUrl = ogMatch ? ogMatch[1] : ''
+
+    // Validate it looks like a real image
+    if (imgUrl && imgUrl.startsWith('http') && !imgUrl.includes('logo') && !imgUrl.includes('favicon')) {
+      return imgUrl
+    }
+
+    return ''
+  } catch {
+    return ''
+  }
 }
 
 // ── XML PARSER ────────────────────────────────────────────────────────────────
@@ -102,9 +146,7 @@ function parseRssItems(xml: string, sourceName: string): Article[] {
 
     if (!title || !link) continue
 
-    // Clean description — decode entities first, then strip tags
     const cleanDesc = cleanDescription(rawDescription)
-
     const id = 'rss_' + simpleHash(link) + '_' + simpleHash(title)
 
     let publishedAt: string
@@ -167,6 +209,37 @@ async function fetchFeed(feed: typeof RSS_FEEDS[0]): Promise<Article[]> {
   return []
 }
 
+// ── ENRICH ARTICLES WITH OG IMAGES ───────────────────────────────────────────
+// For articles missing images, fetch the OG image from the article page
+async function enrichWithOgImages(articles: Article[]): Promise<Article[]> {
+  const missing = articles.filter(a => !a.image_url)
+  const withImage = articles.filter(a => !!a.image_url)
+
+  console.log(`Fetching OG images for ${missing.length} articles without images...`)
+
+  // Batch in groups of 5 to avoid overwhelming servers
+  const enriched: Article[] = []
+  for (let i = 0; i < missing.length; i += 5) {
+    const batch = missing.slice(i, i + 5)
+    const results = await Promise.allSettled(
+      batch.map(async (article) => {
+        const ogImage = await fetchOgImage(article.url)
+        return { ...article, image_url: ogImage }
+      })
+    )
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        enriched.push(result.value)
+      }
+    }
+  }
+
+  const withOg = enriched.filter(a => !!a.image_url).length
+  console.log(`OG image fetch: ${withOg}/${missing.length} found`)
+
+  return [...withImage, ...enriched]
+}
+
 // ── FILTER BAD ARTICLES ───────────────────────────────────────────────────────
 function isValidRssArticle(article: Article): boolean {
   if (!article.title || article.title.length < 10) return false
@@ -199,6 +272,7 @@ export async function fetchConflictNews(limit = 24): Promise<Article[]> {
     }
   }
 
+  // Deduplicate by URL
   const seen = new Set<string>()
   const unique = allArticles.filter(a => {
     if (seen.has(a.url)) return false
@@ -206,9 +280,21 @@ export async function fetchConflictNews(limit = 24): Promise<Article[]> {
     return true
   })
 
+  // Filter bad articles
   const valid = unique.filter(isValidRssArticle)
+
+  // Sort by newest first
   valid.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
 
-  console.log(`RSS: ${allArticles.length} fetched → ${valid.length} valid → returning ${Math.min(valid.length, limit)}`)
-  return valid.slice(0, limit)
+  // Take only what we need before OG fetching
+  const topArticles = valid.slice(0, limit)
+
+  // Enrich missing images with OG scraping
+  const enriched = await enrichWithOgImages(topArticles)
+
+  // Re-sort after enrichment
+  enriched.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
+
+  console.log(`RSS: ${allArticles.length} fetched → ${valid.length} valid → ${enriched.filter(a => a.image_url).length} with images`)
+  return enriched
 }

@@ -14,6 +14,7 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
   sports: 'from-green-900 to-green-700',
   business: 'from-amber-900 to-amber-700',
   positive: 'from-emerald-900 to-emerald-700',
+  conflicts: 'from-red-950 to-red-800',
   general: 'from-slate-800 to-slate-600',
 }
 
@@ -23,10 +24,10 @@ const CATEGORY_ICONS: Record<string, string> = {
   sports: '⚽',
   business: '📈',
   positive: '🌟',
+  conflicts: '⚡',
   general: '📰',
 }
 
-// Known domains that only serve logos, not real article images
 const LOGO_DOMAINS = [
   'sportsnet.ca/wp-content/uploads/2013',
   'sportsnet.ca/wp-content/uploads/2014',
@@ -51,10 +52,8 @@ export default function NewsImage({ src, alt, className = '', category = 'genera
   const gradient = CATEGORY_GRADIENTS[category] || CATEGORY_GRADIENTS.general
   const icon = CATEGORY_ICONS[category] || '📰'
 
-  // Handle image load — check if it's too small (logo-sized)
   function handleLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const img = e.currentTarget
-    // If image is very small (logo dimensions), show fallback
     if (img.naturalWidth < 200 || img.naturalHeight < 120) {
       setShowFallback(true)
     } else {
@@ -73,7 +72,6 @@ export default function NewsImage({ src, alt, className = '', category = 'genera
 
   return (
     <div className={`relative overflow-hidden ${className}`}>
-      {/* Loading skeleton */}
       {!loaded && (
         <div className={`absolute inset-0 bg-gradient-to-br ${gradient} flex items-center justify-center`}>
           <span className="text-4xl animate-pulse">{icon}</span>
