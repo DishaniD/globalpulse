@@ -10,6 +10,7 @@ const CATEGORY_MAP: Record<Category, string> = {
   business: 'business',
   positive: 'general',
   general: 'general',
+  conflicts: 'general',
 }
 
 // Filter out bad articles - no proper title, favicon-only images, or very old positive news
@@ -38,6 +39,9 @@ function isValidArticle(article: NewsApiArticle, category?: Category): boolean {
 }
 
 export async function fetchNewsByCategory(category: Category, limit = 9): Promise<NewsApiArticle[]> {
+  // Conflicts uses RSS, not this API
+  if (category === 'conflicts') return []
+
   const apiCategory = CATEGORY_MAP[category]
 
   // Fetch more than needed so we have enough after filtering
