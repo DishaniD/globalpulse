@@ -6,7 +6,7 @@ import { formatDistanceToNow } from 'date-fns'
 import NewsImage from '@/components/NewsImage'
 import ShareButtons from '@/components/ShareButtons'
 
-interface AIContent {
+interface ArticleContent {
   rewritten: string
   summary: string
   imagePrompt: string
@@ -29,8 +29,8 @@ export default function ArticlePageClient() {
   const articleId = params.get('id') || ''
 
   const [status, setStatus] = useState<Status>('loading')
-  const [aiContent, setAiContent] = useState<AIContent | null>(null)
-  const [aiImgLoading, setAiImgLoading] = useState(false)
+  const [content, setContent] = useState<ArticleContent | null>(null)
+  const [imgLoading, setImgLoading] = useState(false)
   const [bookmarked, setBookmarked] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
   const [session] = useState(() => {
@@ -66,15 +66,15 @@ export default function ArticlePageClient() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title, content: desc || title, category: cat, articleId }),
         })
-        if (!rewriteRes.ok) throw new Error('Rewrite failed')
+        if (!rewriteRes.ok) throw new Error('Failed')
         const { rewritten, summary, imagePrompt, aiImageUrl, fromCache } = await rewriteRes.json()
-        setAiContent({ rewritten, summary, imagePrompt, aiImageUrl, fromCache })
+        setContent({ rewritten, summary, imagePrompt, aiImageUrl, fromCache })
         setStatus('done')
 
         if (aiImageUrl) return
 
         if (imagePrompt) {
-          setAiImgLoading(true)
+          setImgLoading(true)
           try {
             const imgRes = await fetch('/api/generate-image', {
               method: 'POST',
@@ -83,12 +83,12 @@ export default function ArticlePageClient() {
             })
             if (imgRes.ok) {
               const { imageUrl } = await imgRes.json()
-              setAiContent(prev => prev ? { ...prev, aiImageUrl: imageUrl } : prev)
+              setContent(prev => prev ? { ...prev, aiImageUrl: imageUrl } : prev)
             }
           } catch (e) {
             console.error('Image gen failed:', e)
           } finally {
-            setAiImgLoading(false)
+            setImgLoading(false)
           }
         }
       } catch (err) {
@@ -111,7 +111,7 @@ export default function ArticlePageClient() {
     setBookmarked(!bookmarked)
   }
 
-  const displayImage = aiContent?.aiImageUrl || img
+  const displayImage = content?.aiImageUrl || img
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
@@ -155,8 +155,8 @@ export default function ArticlePageClient() {
             <div className="h-3 bg-cream/10 rounded animate-pulse w-3/5" />
           </div>
         )}
-        {status === 'done' && aiContent && (
-          <p className="text-cream/85 text-sm sm:text-base leading-relaxed font-body">{aiContent.summary}</p>
+        {status === 'done' && content && (
+          <p className="text-cream/85 text-sm sm:text-base leading-relaxed font-body">{content.summary}</p>
         )}
         {status === 'error' && (
           <p className="text-cream/60 text-sm font-body leading-relaxed">{desc}</p>
@@ -165,10 +165,10 @@ export default function ArticlePageClient() {
 
       {/* Hero Image */}
       <div className="relative mb-8 overflow-hidden" style={{ minHeight: '260px' }}>
-        {aiImgLoading ? (
+        {imgLoading ? (
           <div className="flex flex-col items-center justify-center bg-ink/5 h-64">
             <div className="w-7 h-7 border-2 border-pulse border-t-transparent rounded-full animate-spin mb-2" />
-            <p className="font-mono text-xs text-ink/40">Loading image...</p>
+            <p className="font-mono text-xs text-ink/40">Loading...</p>
           </div>
         ) : (
           <NewsImage src={displayImage} alt={title} category={cat}
@@ -185,9 +185,9 @@ export default function ArticlePageClient() {
             ))}
           </div>
         )}
-        {status === 'done' && aiContent && (
+        {status === 'done' && content && (
           <div className="font-body text-base sm:text-lg leading-relaxed text-ink/90 whitespace-pre-wrap">
-            {aiContent.rewritten}
+            {content.rewritten}
           </div>
         )}
         {status === 'error' && (
@@ -207,7 +207,7 @@ export default function ArticlePageClient() {
           </div>
           <a href={url} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-2 bg-ink text-cream font-mono text-sm px-5 py-3 hover:bg-pulse transition-colors duration-200 w-full sm:w-auto justify-center">
-            Read Original →
+            Read Original at {source} →
           </a>
         </div>
       </div>
