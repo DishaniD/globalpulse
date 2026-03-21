@@ -7,7 +7,8 @@ import CategorySection from '@/components/CategorySection'
 import PositiveSection from '@/components/PositiveSection'
 import { Category } from '@/types'
 
-export const revalidate = 900
+// Revalidate every 5 minutes — picks up fresh articles from DB quickly
+export const revalidate = 300
 
 async function getOrFetch(category: Category, limit: number) {
   let articles = await getArticlesByCategory(category, limit)
@@ -39,7 +40,6 @@ async function getOrFetchConflicts(limit: number) {
       console.error('Failed to fetch conflicts:', e)
     }
   }
-  // Always sort by newest
   articles.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
   return articles.slice(0, limit)
 }
@@ -74,7 +74,6 @@ export default async function HomePage() {
       <div className="section-divider" />
 
       <div className="space-y-12">
-        {/* Breaking Conflicts — shown first, red accent */}
         {conflicts.length > 0 && (
           <CategorySection
             title="Breaking Conflicts"
