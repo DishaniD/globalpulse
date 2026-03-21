@@ -11,21 +11,31 @@ export async function POST(request: NextRequest) {
   if (authHeader !== `Bearer ${process.env.SYNC_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-
   try {
     const result = await runSync()
     return NextResponse.json(result)
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Allow Vercel cron jobs (they send this header) OR manual calls with secret
+  const isCron = request.headers.get('x-vercel-cron') === '1'
+  const authHeader = request.headers.get('authorization')
+  const isManual = authHeader === `Bearer ${process.env.SYNC_SECRET}`
+
+  if (!isCron && !isManual && process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const result = await runSync()
     return NextResponse.json(result)
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
@@ -55,6 +65,7 @@ async function runSync() {
   return {
     success: true,
     saved: totalSaved,
+    synced_at: new Date().toISOString(),
     breakdown: {
       standard: totalSaved - conflictArticles.length,
       conflicts_rss: conflictArticles.length,

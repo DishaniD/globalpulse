@@ -1,10 +1,19 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { fetchConflictNews } from '@/lib/rssService'
 import { saveArticles } from '@/lib/db'
 
 export const maxDuration = 60
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Allow Vercel cron jobs or manual calls with secret
+  const isCron = request.headers.get('x-vercel-cron') === '1'
+  const authHeader = request.headers.get('authorization')
+  const isManual = authHeader === `Bearer ${process.env.SYNC_SECRET}`
+
+  if (!isCron && !isManual && process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const articles = await fetchConflictNews(40)
 
@@ -19,6 +28,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       saved: articles.length,
+      synced_at: new Date().toISOString(),
       with_images: withImages,
       without_images: articles.length - withImages,
       sources: {
